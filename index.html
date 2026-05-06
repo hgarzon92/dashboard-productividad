@@ -182,7 +182,7 @@ body{font-family:Arial;background:#f6f8fb;min-height:100vh}
 
   <div class="nav" id="nav"></div>
 
-  <!-- Vista Coordinador -->
+  <!-- Vista Resumen -->
   <div id="v-coordinador" class="view">
     <div class="export-bar" id="barra-exportar">
       <label>📥 Exportar:</label>
@@ -250,7 +250,7 @@ body{font-family:Arial;background:#f6f8fb;min-height:100vh}
     <div class="card">
       <h3>🗑 Eliminar registros de pagos</h3><br>
       <p style="color:#888;font-size:13px;margin-bottom:12px">
-        Haz clic en cualquier pago en la vista Coordinador para ver su detalle y eliminarlo.
+        Haz clic en cualquier pago en la vista Resumen para ver su detalle y eliminarlo.
       </p>
       <div id="pagos-admin"></div>
     </div>
@@ -406,18 +406,18 @@ function buildNav(){
 
   if (rol === "administrador"){
     tabs = [
-      { id:"coordinador", label:"📊 Coordinador" },
+      { id:"coordinador", label:"📊 Resumen" },
       { id:"registro",    label:"+ Registrar"   },
       { id:"admin",       label:"⚙ Administrar" }
     ];
   } else if (rol === "operacion"){
     tabs = [
-      { id:"coordinador", label:"📊 Coordinador" },
+      { id:"coordinador", label:"📊 Resumen" },
       { id:"registro",    label:"+ Registrar"   }
     ];
   } else {
-    // consulta — solo coordinador, sin botón
-    tabs = [{ id:"coordinador", label:"📊 Coordinador" }];
+    // consulta — solo resumen, sin botón
+    tabs = [{ id:"coordinador", label:"📊 Resumen" }];
   }
 
   document.getElementById("nav").innerHTML = tabs.map((t, i) =>
@@ -585,8 +585,14 @@ function render(){
   if (dpagos) dpagos.innerHTML = window.pagos.length
     ? [...window.pagos].sort((a,b)=>(b.ts||0)-(a.ts||0)).map(p => {
         const cls = p.estado==="Completado"?"ok":p.estado==="Revisión"?"warn":"bad";
+        const horaMin = p.ts
+          ? new Date(p.ts).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'})
+          : (p.hora!==undefined ? p.hora+":00" : "—");
+        const fecha = p.ts
+          ? new Date(p.ts).toLocaleDateString('es-CO')
+          : (p.fecha||"");
         return `<div class="member-row" onclick="verDetalleRegistro('${p._id}')">
-          <span>${p.persona} <small style="color:#aaa">${p.fecha||''}</small></span>
+          <span>${p.persona} <small style="color:#aaa">${fecha} ${horaMin}</small></span>
           <span class="badge ${cls}">${p.estado}</span>
         </div>`;
       }).join("")
