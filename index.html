@@ -6,7 +6,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 body{font-family:Arial;background:#f6f8fb;padding:20px}
-.nav{display:flex;gap:10px;margin-bottom:20px}
+.nav{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
 .nav-btn{padding:8px 14px;border-radius:20px;border:1px solid #ddd;cursor:pointer}
 .nav-btn.active{background:#1D9E75;color:#fff}
 .view{display:none}
@@ -19,6 +19,21 @@ body{font-family:Arial;background:#f6f8fb;padding:20px}
 .modal-content{background:#fff;padding:20px;border-radius:12px;width:400px;max-height:80vh;overflow:auto}
 #toast{position:fixed;bottom:20px;right:20px;background:#1D9E75;color:#fff;padding:12px 18px;border-radius:8px;display:none}
 .btn-mini{padding:4px 8px;border:1px solid #ddd;border-radius:6px;cursor:pointer;font-size:11px;background:#fff}
+.btn-export{
+  padding:9px 18px;background:#185FA5;color:#fff;border:none;
+  border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;
+  display:inline-flex;align-items:center;gap:6px
+}
+.btn-export:hover{background:#1250a0}
+.export-bar{
+  display:flex;align-items:center;gap:10px;
+  background:#fff;padding:12px 16px;border-radius:10px;
+  margin-bottom:12px;flex-wrap:wrap;border:1px solid #e0e0e0
+}
+.export-bar label{font-size:13px;color:#555;font-weight:600}
+.export-bar select, .export-bar input{
+  padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px
+}
 </style>
 </head>
 <body>
@@ -29,6 +44,29 @@ body{font-family:Arial;background:#f6f8fb;padding:20px}
 
   <!-- COORDINADOR -->
   <div id="v-coordinador" class="view active">
+
+    <!-- BARRA DE EXPORTACIÓN -->
+    <div class="export-bar">
+      <label>📥 Exportar a Excel:</label>
+      <select id="filtro-persona">
+        <option value="">Todas las personas</option>
+      </select>
+      <select id="filtro-estado">
+        <option value="">Todos los estados</option>
+        <option>Completado</option>
+        <option>Revisión</option>
+        <option>Rechazado</option>
+        <option>Otros</option>
+      </select>
+      <label style="margin-left:4px">Desde:</label>
+      <input type="date" id="filtro-desde">
+      <label>Hasta:</label>
+      <input type="date" id="filtro-hasta">
+      <button class="btn-export" onclick="exportarCSV()">
+        ⬇ Descargar Excel (.csv)
+      </button>
+    </div>
+
     <div class="card">
       <h3>📊 Operaciones por hora</h3>
       <canvas id="grafico"></canvas>
@@ -93,11 +131,7 @@ body{font-family:Arial;background:#f6f8fb;padding:20px}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
-  getDatabase,
-  ref,
-  push,
-  remove,
-  onValue
+  getDatabase, ref, push, remove, onValue
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
 
 const firebaseConfig = {
@@ -113,31 +147,23 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
 
-// ── Funciones de escritura expuestas al script global ──
-window._guardarPago = (datos) =>
-  push(ref(db, "pagos"), datos);
+window._guardarPago     = (d) => push(ref(db, "pagos"), d);
+window._guardarUsuario  = (d) => push(ref(db, "equipo"), d);
+window._eliminarUsuario = (id) => remove(ref(db, "equipo/" + id));
 
-window._guardarUsuario = (datos) =>
-  push(ref(db, "equipo"), datos);
-
-window._eliminarUsuario = (id) =>
-  remove(ref(db, "equipo/" + id));
-
-// ── Escucha equipo en tiempo real ──
 onValue(ref(db, "equipo"), (snap) => {
   const raw = snap.val() || {};
   window.equipo = Object.entries(raw).map(([id, v]) => ({ ...v, _id: id }));
-
   const sel = document.getElementById("persona");
   if (sel) {
     const prev = sel.value;
     sel.innerHTML = window.equipo.map(p => `<option>${p.nombre}</option>`).join("");
     if (prev) sel.value = prev;
   }
+  actualizarFiltroPersonas();
   render();
 });
 
-// ── Escucha pagos en tiempo real ──
 onValue(ref(db, "pagos"), (snap) => {
   const raw = snap.val() || {};
   window.pagos = Object.entries(raw).map(([id, v]) => ({ ...v, _id: id }));
@@ -146,21 +172,18 @@ onValue(ref(db, "pagos"), (snap) => {
 </script>
 
 <script>
-// ── Estado local ─────────────────────────────────────────
 window.equipo = [];
 window.pagos  = [];
 let chart;
 
-// ── Toast ────────────────────────────────────────────────
 function showToast(msg, color="#1D9E75"){
   const t = document.getElementById("toast");
   t.innerText = msg;
   t.style.background = color;
   t.style.display = "block";
-  setTimeout(() => t.style.display = "none", 2000);
+  setTimeout(() => t.style.display = "none", 2500);
 }
 
-// ── Nav ──────────────────────────────────────────────────
 function renderNav(){
   document.getElementById("nav").innerHTML = `
     <button class="nav-btn active" onclick="cambiarVista('coordinador',this)">Coordinador</button>
@@ -175,7 +198,6 @@ function cambiarVista(id, btn){
   btn.classList.add('active');
 }
 
-// ── Registrar pago ───────────────────────────────────────
 function registrar(){
   const datos = {
     persona:     document.getElementById("persona").value,
@@ -183,6 +205,7 @@ function registrar(){
     tiempo:      document.getElementById("tiempo").value,
     comentarios: document.getElementById("comentarios").value,
     hora:        new Date().getHours(),
+    fecha:       new Date().toLocaleDateString('es-CO'),
     ts:          Date.now()
   };
   window._guardarPago(datos).then(() => {
@@ -192,7 +215,6 @@ function registrar(){
   });
 }
 
-// ── Agregar usuario ──────────────────────────────────────
 function agregarUsuario(){
   const nombre = document.getElementById("nuevoNombre").value.trim();
   const rol    = document.getElementById("nuevoRol").value;
@@ -203,47 +225,39 @@ function agregarUsuario(){
   });
 }
 
-// ── Eliminar usuario ─────────────────────────────────────
 function eliminar(id){
-  window._eliminarUsuario(id).then(() => {
-    showToast("Usuario eliminado", "#E24B4A");
-  });
+  window._eliminarUsuario(id).then(() => showToast("Usuario eliminado", "#E24B4A"));
 }
 
-// ── Editar nombre ────────────────────────────────────────
 function editar(i){
   const nuevo = prompt("Nuevo nombre", window.equipo[i].nombre);
-  if (nuevo) {
-    window.equipo[i].nombre = nuevo;
-    showToast("Actualizado localmente", "#185FA5");
-    render();
-  }
+  if (nuevo){ window.equipo[i].nombre = nuevo; render(); }
 }
 
-// ── Detalle persona ──────────────────────────────────────
 function verDetalle(nombre){
   const data = window.pagos.filter(p => p.persona === nombre);
   document.getElementById("modal-title").innerText = nombre;
-  document.getElementById("modal-body").innerHTML =
-    data.length
-      ? data.map(p =>
-          `<div>${p.hora}:00 — ${p.estado} (${p.tiempo || 0} min)
-           ${p.comentarios ? ' · ' + p.comentarios : ''}</div>`
-        ).join("")
-      : "Sin actividad registrada";
+  document.getElementById("modal-body").innerHTML = data.length
+    ? data.map(p =>
+        `<div style="padding:6px 0;border-bottom:1px solid #eee">
+          <b>${p.fecha || ''} ${p.hora}:00</b> — 
+          ${p.estado} (${p.tiempo || 0} min)
+          ${p.comentarios ? '<br><small style="color:#888">' + p.comentarios + '</small>' : ''}
+        </div>`).join("")
+    : "Sin actividad registrada";
   document.getElementById("modal").style.display = "flex";
 }
 
-// ── Detalle registro ─────────────────────────────────────
 function verDetalleRegistro(i){
   const p = window.pagos[i];
   document.getElementById("modal-title").innerText = "Detalle registro";
   document.getElementById("modal-body").innerHTML = `
     <div><b>Persona:</b> ${p.persona}</div>
-    <div><b>Estado:</b> ${p.estado}</div>
+    <div><b>Fecha:</b> ${p.fecha || '—'}</div>
     <div><b>Hora:</b> ${p.hora}:00</div>
-    <div><b>Tiempo:</b> ${p.tiempo || "-"} min</div>
-    <div><b>Comentarios:</b> ${p.comentarios || "-"}</div>`;
+    <div><b>Estado:</b> ${p.estado}</div>
+    <div><b>Tiempo:</b> ${p.tiempo || "—"} min</div>
+    <div><b>Comentarios:</b> ${p.comentarios || "—"}</div>`;
   document.getElementById("modal").style.display = "flex";
 }
 
@@ -251,9 +265,91 @@ function cerrarModal(){
   document.getElementById("modal").style.display = "none";
 }
 
-// ── Render principal ─────────────────────────────────────
+// ── Actualizar filtro de personas en la barra de exportación ──
+function actualizarFiltroPersonas(){
+  const sel = document.getElementById("filtro-persona");
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">Todas las personas</option>' +
+    window.equipo.map(p => `<option>${p.nombre}</option>`).join("");
+  if (prev) sel.value = prev;
+}
+
+// ── EXPORTAR A CSV ────────────────────────────────────────
+function exportarCSV(){
+  const persona = document.getElementById("filtro-persona").value;
+  const estado  = document.getElementById("filtro-estado").value;
+  const desde   = document.getElementById("filtro-desde").value;
+  const hasta   = document.getElementById("filtro-hasta").value;
+
+  // Filtrar datos
+  let datos = [...window.pagos];
+
+  if (persona) datos = datos.filter(p => p.persona === persona);
+  if (estado)  datos = datos.filter(p => p.estado  === estado);
+  if (desde)   datos = datos.filter(p => {
+    if (!p.ts) return true;
+    return new Date(p.ts) >= new Date(desde);
+  });
+  if (hasta)   datos = datos.filter(p => {
+    if (!p.ts) return true;
+    return new Date(p.ts) <= new Date(hasta + "T23:59:59");
+  });
+
+  if (!datos.length){
+    showToast("No hay datos con esos filtros", "#E24B4A");
+    return;
+  }
+
+  // Ordenar por fecha/hora
+  datos.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+
+  // Construir CSV
+  const encabezado = ["Fecha", "Hora", "Persona", "Estado", "Tiempo (min)", "Comentarios"];
+
+  const filas = datos.map(p => {
+    const fecha = p.ts
+      ? new Date(p.ts).toLocaleDateString('es-CO')
+      : (p.fecha || "—");
+    const hora = p.ts
+      ? new Date(p.ts).toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'})
+      : (p.hora !== undefined ? p.hora + ":00" : "—");
+    // Escapar comas y comillas en comentarios
+    const comentario = (p.comentarios || "").replace(/"/g, '""');
+    return [
+      fecha,
+      hora,
+      p.persona || "—",
+      p.estado  || "—",
+      p.tiempo  || "0",
+      `"${comentario}"`
+    ];
+  });
+
+  const csvContent = [encabezado, ...filas]
+    .map(fila => fila.join(";"))   // punto y coma para Excel en español
+    .join("\n");
+
+  // Agregar BOM para que Excel abra con tildes correctas
+  const bom = "\uFEFF";
+  const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
+  const url  = URL.createObjectURL(blob);
+
+  // Nombre del archivo con fecha
+  const hoy = new Date().toLocaleDateString('es-CO').replace(/\//g, "-");
+  const nombreArchivo = `Productividad_${persona || "Equipo"}_${hoy}.csv`;
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = nombreArchivo;
+  link.click();
+  URL.revokeObjectURL(url);
+
+  showToast(`✓ Descargado: ${nombreArchivo}`);
+}
+
+// ── Render ────────────────────────────────────────────────
 function render(){
-  // Lista equipo
   document.getElementById("lista").innerHTML =
     window.equipo.length
       ? window.equipo.map(p => {
@@ -265,26 +361,22 @@ function render(){
         }).join("")
       : "<p style='color:#999;padding:10px'>Sin colaboradores. Agrégalos en Administrar equipo.</p>";
 
-  // Select personas
   const sel = document.getElementById("persona");
-  if (sel && !sel.options.length) {
+  if (sel && !sel.options.length)
     sel.innerHTML = window.equipo.map(p => `<option>${p.nombre}</option>`).join("");
-  }
 
-  // Lista pagos
   document.getElementById("descripcion-pagos").innerHTML =
     window.pagos.length
       ? window.pagos.map((p, i) => {
           const cls = p.estado === "Completado" ? "ok"
                     : p.estado === "Revisión"   ? "warn" : "bad";
           return `<div class="member-row" onclick="verDetalleRegistro(${i})">
-            <span>${p.persona}</span>
+            <span>${p.persona} <small style="color:#aaa">${p.fecha || ''}</small></span>
             <span class="badge ${cls}">${p.estado}</span>
           </div>`;
         }).join("")
       : "<p style='color:#999;padding:10px'>Sin pagos registrados aún.</p>";
 
-  // Admin lista
   document.getElementById("admin-lista").innerHTML =
     window.equipo.map((p, i) =>
       `<div class="member-row">
@@ -299,7 +391,6 @@ function render(){
   renderGrafico();
 }
 
-// ── Gráfico ──────────────────────────────────────────────
 function renderGrafico(){
   const horas = Array(24).fill(0);
   window.pagos.forEach(p => { if (p.hora !== undefined) horas[p.hora]++; });
@@ -314,7 +405,6 @@ function renderGrafico(){
   });
 }
 
-// ── Init ─────────────────────────────────────────────────
 renderNav();
 render();
 </script>
