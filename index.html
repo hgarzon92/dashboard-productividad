@@ -89,13 +89,16 @@ body{font-family:Arial;background:#f6f8fb;padding:20px}
 
 <div id="toast"></div>
 
-<!-- FIREBASE -->
+<!-- FIREBASE REALTIME DATABASE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
-  getFirestore, collection, addDoc, deleteDoc, doc,
-  onSnapshot
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+  getDatabase,
+  ref,
+  push,
+  remove,
+  onValue
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCRqAGcaSvItP56DT3_hEB0fVJSesntg7s",
@@ -103,22 +106,28 @@ const firebaseConfig = {
   projectId: "dashboard-productividad-c1c2f",
   storageBucket: "dashboard-productividad-c1c2f.firebasestorage.app",
   messagingSenderId: "457846799911",
-  appId: "1:457846799911:web:04706d7ee684cfa3afd802"
+  appId: "1:457846799911:web:04706d7ee684cfa3afd802",
+  databaseURL: "https://dashboard-productividad-c1c2f-default-rtdb.firebaseio.com"
 };
 
 const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
+const db  = getDatabase(app);
 
-// ── Exponer funciones de escritura ──────────────────────
-window._guardarPago = (datos) => addDoc(collection(db, "pagos"), datos);
-window._guardarUsuario = (datos) => addDoc(collection(db, "equipo"), datos);
-window._eliminarUsuario = (id) => deleteDoc(doc(db, "equipo", id));
+// ── Funciones de escritura expuestas al script global ──
+window._guardarPago = (datos) =>
+  push(ref(db, "pagos"), datos);
 
-// ── Escuchas en tiempo real ─────────────────────────────
-// Cada vez que cambia "equipo" en Firebase → actualiza array local + re-render
-onSnapshot(collection(db, "equipo"), (snap) => {
-  window.equipo = snap.docs.map(d => ({ ...d.data(), _id: d.id }));
-  // Sincronizar select de persona en formulario de registro
+window._guardarUsuario = (datos) =>
+  push(ref(db, "equipo"), datos);
+
+window._eliminarUsuario = (id) =>
+  remove(ref(db, "equipo/" + id));
+
+// ── Escucha equipo en tiempo real ──
+onValue(ref(db, "equipo"), (snap) => {
+  const raw = snap.val() || {};
+  window.equipo = Object.entries(raw).map(([id, v]) => ({ ...v, _id: id }));
+
   const sel = document.getElementById("persona");
   if (sel) {
     const prev = sel.value;
@@ -128,15 +137,16 @@ onSnapshot(collection(db, "equipo"), (snap) => {
   render();
 });
 
-// Cada vez que cambia "pagos" en Firebase → actualiza array local + re-render
-onSnapshot(collection(db, "pagos"), (snap) => {
-  window.pagos = snap.docs.map(d => ({ ...d.data(), _id: d.id }));
+// ── Escucha pagos en tiempo real ──
+onValue(ref(db, "pagos"), (snap) => {
+  const raw = snap.val() || {};
+  window.pagos = Object.entries(raw).map(([id, v]) => ({ ...v, _id: id }));
   render();
 });
 </script>
 
 <script>
-// ── Estado local (se sobreescribe por onSnapshot) ───────
+// ── Estado local ─────────────────────────────────────────
 window.equipo = [];
 window.pagos  = [];
 let chart;
@@ -165,19 +175,16 @@ function cambiarVista(id, btn){
   btn.classList.add('active');
 }
 
-// ── Registrar pago → guarda en Firebase ─────────────────
+// ── Registrar pago ───────────────────────────────────────
 function registrar(){
   const datos = {
-    persona:      document.getElementById("persona").value,
-    estado:       document.getElementById("estado").value,
-    tiempo:       document.getElementById("tiempo").value,
-    comentarios:  document.getElementById("comentarios").value,
-    hora:         new Date().getHours(),
-    ts:           Date.now()
+    persona:     document.getElementById("persona").value,
+    estado:      document.getElementById("estado").value,
+    tiempo:      document.getElementById("tiempo").value,
+    comentarios: document.getElementById("comentarios").value,
+    hora:        new Date().getHours(),
+    ts:          Date.now()
   };
-
-  // _guardarPago llama addDoc en Firebase
-  // onSnapshot detecta el cambio y llama render() automáticamente
   window._guardarPago(datos).then(() => {
     showToast("Registro guardado ✓");
     document.getElementById("tiempo").value = "";
@@ -185,12 +192,11 @@ function registrar(){
   });
 }
 
-// ── Agregar usuario → guarda en Firebase ────────────────
+// ── Agregar usuario ──────────────────────────────────────
 function agregarUsuario(){
   const nombre = document.getElementById("nuevoNombre").value.trim();
   const rol    = document.getElementById("nuevoRol").value;
   if (!nombre) return;
-
   window._guardarUsuario({ nombre, rol }).then(() => {
     showToast("Usuario agregado ✓");
     document.getElementById("nuevoNombre").value = "";
@@ -204,12 +210,12 @@ function eliminar(id){
   });
 }
 
-// ── Editar nombre (solo local, sin Firebase para simplificar) ──
+// ── Editar nombre ────────────────────────────────────────
 function editar(i){
   const nuevo = prompt("Nuevo nombre", window.equipo[i].nombre);
   if (nuevo) {
     window.equipo[i].nombre = nuevo;
-    showToast("Actualizado (recarga para persistir)", "#185FA5");
+    showToast("Actualizado localmente", "#185FA5");
     render();
   }
 }
@@ -220,7 +226,10 @@ function verDetalle(nombre){
   document.getElementById("modal-title").innerText = nombre;
   document.getElementById("modal-body").innerHTML =
     data.length
-      ? data.map(p => `<div>${p.hora}:00 — ${p.estado} (${p.tiempo || 0} min)${p.comentarios ? ' · ' + p.comentarios : ''}</div>`).join("")
+      ? data.map(p =>
+          `<div>${p.hora}:00 — ${p.estado} (${p.tiempo || 0} min)
+           ${p.comentarios ? ' · ' + p.comentarios : ''}</div>`
+        ).join("")
       : "Sin actividad registrada";
   document.getElementById("modal").style.display = "flex";
 }
@@ -242,29 +251,32 @@ function cerrarModal(){
   document.getElementById("modal").style.display = "none";
 }
 
-// ── Render principal (se llama cada vez que Firebase actualiza) ──
+// ── Render principal ─────────────────────────────────────
 function render(){
   // Lista equipo
   document.getElementById("lista").innerHTML =
-    window.equipo.map(p => {
-      const total = window.pagos.filter(x => x.persona === p.nombre).length;
-      return `<div class="member-row" onclick="verDetalle('${p.nombre}')">
-        <span>${p.nombre} <small style="color:#999">(${p.rol})</small></span>
-        <span>${total} ops</span>
-      </div>`;
-    }).join("") || "<p style='color:#999;padding:10px'>Sin colaboradores aún. Agrégalos en Administrar equipo.</p>";
+    window.equipo.length
+      ? window.equipo.map(p => {
+          const total = window.pagos.filter(x => x.persona === p.nombre).length;
+          return `<div class="member-row" onclick="verDetalle('${p.nombre}')">
+            <span>${p.nombre} <small style="color:#999">(${p.rol})</small></span>
+            <span>${total} ops</span>
+          </div>`;
+        }).join("")
+      : "<p style='color:#999;padding:10px'>Sin colaboradores. Agrégalos en Administrar equipo.</p>";
 
-  // Select personas en formulario registro
+  // Select personas
   const sel = document.getElementById("persona");
   if (sel && !sel.options.length) {
     sel.innerHTML = window.equipo.map(p => `<option>${p.nombre}</option>`).join("");
   }
 
-  // Pagos
+  // Lista pagos
   document.getElementById("descripcion-pagos").innerHTML =
     window.pagos.length
       ? window.pagos.map((p, i) => {
-          const cls = p.estado === "Completado" ? "ok" : p.estado === "Revisión" ? "warn" : "bad";
+          const cls = p.estado === "Completado" ? "ok"
+                    : p.estado === "Revisión"   ? "warn" : "bad";
           return `<div class="member-row" onclick="verDetalleRegistro(${i})">
             <span>${p.persona}</span>
             <span class="badge ${cls}">${p.estado}</span>
@@ -304,7 +316,7 @@ function renderGrafico(){
 
 // ── Init ─────────────────────────────────────────────────
 renderNav();
-render(); // render inicial mientras Firebase carga
+render();
 </script>
 </body>
 </html>
