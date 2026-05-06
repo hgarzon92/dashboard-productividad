@@ -5,74 +5,203 @@
 <title>Dashboard Productividad</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body{font-family:Arial;background:#f6f8fb;padding:20px}
-.nav{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
-.nav-btn{padding:8px 14px;border-radius:20px;border:1px solid #ddd;cursor:pointer}
-.nav-btn.active{background:#1D9E75;color:#fff}
-.view{display:none}
-.view.active{display:block}
-.card{background:#fff;padding:16px;border-radius:12px;margin-bottom:12px}
-.member-row{display:flex;justify-content:space-between;padding:10px;border-bottom:1px solid #eee;cursor:pointer;align-items:center;gap:10px}
-.badge{padding:3px 8px;border-radius:10px;font-size:11px}
-.ok{background:#e6f7f1}.warn{background:#fff3cd}.bad{background:#fdecec}
-.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center}
-.modal-content{background:#fff;padding:20px;border-radius:12px;width:400px;max-height:80vh;overflow:auto}
-#toast{position:fixed;bottom:20px;right:20px;background:#1D9E75;color:#fff;padding:12px 18px;border-radius:8px;display:none}
-.btn-mini{padding:4px 8px;border:1px solid #ddd;border-radius:6px;cursor:pointer;font-size:11px;background:#fff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial;background:#f6f8fb;min-height:100vh}
+
+/* ── LOGIN ── */
+#login-screen{
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;background:linear-gradient(135deg,#1a3a5c,#0f1f35);
+}
+.login-box{
+  background:#fff;border-radius:16px;padding:36px 32px;
+  width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.3);
+}
+.login-logo{
+  text-align:center;font-size:40px;margin-bottom:8px;
+}
+.login-title{
+  text-align:center;font-size:20px;font-weight:700;color:#1a3a5c;margin-bottom:4px;
+}
+.login-sub{
+  text-align:center;font-size:13px;color:#888;margin-bottom:24px;
+}
+.login-field{margin-bottom:14px;}
+.login-field label{
+  display:block;font-size:12px;font-weight:700;color:#555;
+  text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;
+}
+.login-field select,
+.login-field input{
+  width:100%;padding:11px 13px;border:1.5px solid #ddd;border-radius:8px;
+  font-size:14px;outline:none;transition:border .2s;
+}
+.login-field select:focus,
+.login-field input:focus{border-color:#185FA5;}
+#campo-password{display:none;}
+.login-btn{
+  width:100%;padding:13px;background:#185FA5;color:#fff;
+  border:none;border-radius:8px;font-size:15px;font-weight:700;
+  cursor:pointer;margin-top:4px;transition:background .2s;
+}
+.login-btn:hover{background:#1250a0;}
+.login-error{
+  background:#fdecec;color:#c0392b;border-radius:7px;
+  padding:9px 13px;font-size:13px;margin-bottom:12px;display:none;
+}
+.login-badge{
+  display:inline-block;padding:3px 10px;border-radius:20px;
+  font-size:11px;font-weight:700;margin-top:6px;
+}
+.badge-admin{background:#fff3cd;color:#856404;}
+.badge-consulta{background:#e1f5ee;color:#0f6e56;}
+.badge-operacion{background:#deecf9;color:#003a70;}
+#rol-desc{
+  font-size:12px;color:#888;margin-top:8px;
+  padding:8px 10px;background:#f8f8f8;border-radius:6px;display:none;
+}
+
+/* ── APP ── */
+#app{display:none;padding:20px;}
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  background:#fff;padding:10px 16px;border-radius:10px;
+  margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06);
+}
+.topbar-left{display:flex;align-items:center;gap:10px;}
+.rol-chip{
+  padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;
+}
+.nav{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.nav-btn{
+  padding:8px 16px;border-radius:20px;border:1px solid #ddd;
+  cursor:pointer;font-size:13px;background:#fff;
+}
+.nav-btn.active{background:#1D9E75;color:#fff;border-color:#1D9E75;}
+.view{display:none;}
+.view.active{display:block;}
+.card{background:#fff;padding:16px;border-radius:12px;margin-bottom:12px;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.member-row{
+  display:flex;justify-content:space-between;padding:10px;
+  border-bottom:1px solid #eee;cursor:pointer;align-items:center;gap:10px;
+}
+.badge{padding:3px 8px;border-radius:10px;font-size:11px;}
+.ok{background:#e6f7f1;color:#0f6e56;}
+.warn{background:#fff3cd;color:#856404;}
+.bad{background:#fdecec;color:#c0392b;}
+.modal{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;
+}
+.modal-content{
+  background:#fff;padding:24px;border-radius:12px;
+  width:420px;max-height:80vh;overflow:auto;
+}
+#toast{
+  position:fixed;bottom:20px;right:20px;background:#1D9E75;color:#fff;
+  padding:12px 18px;border-radius:8px;display:none;font-weight:600;
+  box-shadow:0 4px 16px rgba(0,0,0,.2);
+}
+.btn-mini{
+  padding:4px 8px;border:1px solid #ddd;border-radius:6px;
+  cursor:pointer;font-size:11px;background:#fff;
+}
+.btn-mini.danger{border-color:#f5c6c6;color:#c0392b;}
 .btn-export{
   padding:9px 18px;background:#185FA5;color:#fff;border:none;
-  border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;
-  display:inline-flex;align-items:center;gap:6px
+  border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;
+  display:inline-flex;align-items:center;gap:6px;
 }
-.btn-export:hover{background:#1250a0}
+.btn-export:hover{background:#1250a0;}
 .export-bar{
-  display:flex;align-items:center;gap:10px;
-  background:#fff;padding:12px 16px;border-radius:10px;
-  margin-bottom:12px;flex-wrap:wrap;border:1px solid #e0e0e0
+  display:flex;align-items:center;gap:10px;background:#fff;
+  padding:12px 16px;border-radius:10px;margin-bottom:12px;
+  flex-wrap:wrap;border:1px solid #e0e0e0;
 }
-.export-bar label{font-size:13px;color:#555;font-weight:600}
-.export-bar select, .export-bar input{
-  padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px
+.export-bar label{font-size:13px;color:#555;font-weight:600;}
+.export-bar select,.export-bar input{
+  padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;
 }
+.logout-btn{
+  background:transparent;border:1px solid #ddd;color:#888;
+  padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;
+}
+.logout-btn:hover{border-color:#c0392b;color:#c0392b;}
 </style>
 </head>
 <body>
-<div id="app">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
-    <div class="nav" id="nav"></div>
-  </div>
 
-  <!-- COORDINADOR -->
-  <div id="v-coordinador" class="view active">
+<!-- ══════════ LOGIN ══════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">📊</div>
+    <div class="login-title">Centro de productividad</div>
+    <div class="login-sub">Operaciones financieras · Suramericana</div>
 
-    <!-- BARRA DE EXPORTACIÓN -->
-    <div class="export-bar">
-      <label>📥 Exportar a Excel:</label>
-      <select id="filtro-persona">
-        <option value="">Todas las personas</option>
+    <div class="login-field">
+      <label>Tipo de usuario</label>
+      <select id="login-rol" onchange="cambiarRol()">
+        <option value="">— Selecciona tu rol —</option>
+        <option value="administrador">Administrador</option>
+        <option value="consulta">Consulta</option>
+        <option value="operacion">Operación</option>
       </select>
-      <select id="filtro-estado">
-        <option value="">Todos los estados</option>
-        <option>Completado</option>
-        <option>Revisión</option>
-        <option>Rechazado</option>
-        <option>Otros</option>
-      </select>
-      <label style="margin-left:4px">Desde:</label>
-      <input type="date" id="filtro-desde">
-      <label>Hasta:</label>
-      <input type="date" id="filtro-hasta">
-      <button class="btn-export" onclick="exportarCSV()">
-        ⬇ Descargar Excel (.csv)
-      </button>
+      <div id="rol-desc"></div>
     </div>
 
+    <div class="login-field" id="campo-password">
+      <label>Contraseña</label>
+      <input type="password" id="login-password" placeholder="Ingresa la contraseña"
+             onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+
+    <div class="login-error" id="login-error"></div>
+
+    <button class="login-btn" onclick="doLogin()">Ingresar →</button>
+  </div>
+</div>
+
+<!-- ══════════ APP ══════════ -->
+<div id="app">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <span style="font-size:22px">📊</span>
+      <div>
+        <div style="font-weight:700;font-size:15px">Centro de productividad</div>
+        <div style="font-size:11px;color:#999">Operaciones financieras</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span id="topbar-chip" class="rol-chip"></span>
+      <button class="logout-btn" onclick="logout()">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <div class="nav" id="nav"></div>
+
+  <!-- Vista Coordinador -->
+  <div id="v-coordinador" class="view">
+    <div class="export-bar" id="barra-exportar">
+      <label>📥 Exportar:</label>
+      <select id="filtro-persona"><option value="">Todas las personas</option></select>
+      <select id="filtro-estado">
+        <option value="">Todos los estados</option>
+        <option>Completado</option><option>Revisión</option>
+        <option>Rechazado</option><option>Otros</option>
+      </select>
+      <label>Desde:</label><input type="date" id="filtro-desde">
+      <label>Hasta:</label><input type="date" id="filtro-hasta">
+      <button class="btn-export" onclick="exportarCSV()">⬇ Descargar Excel</button>
+    </div>
     <div class="card">
       <h3>📊 Operaciones por hora</h3>
       <canvas id="grafico"></canvas>
     </div>
     <div class="card">
-      <h3>👥 Equipo operativo</h3>
+      <h3>👥 Equipo</h3>
       <div id="lista"></div>
     </div>
     <div class="card">
@@ -81,53 +210,77 @@ body{font-family:Arial;background:#f6f8fb;padding:20px}
     </div>
   </div>
 
-  <!-- REGISTRO -->
+  <!-- Vista Registrar -->
   <div id="v-registro" class="view">
     <div class="card">
-      <h3>Registrar actividad</h3>
-      <select id="persona"></select><br><br>
-      <select id="estado">
-        <option>Completado</option>
-        <option>Revisión</option>
-        <option>Rechazado</option>
-        <option>Otros</option>
-      </select><br><br>
-      <input type="number" id="tiempo" placeholder="Tiempo (minutos)"><br><br>
-      <input type="text" id="comentarios" placeholder="Comentarios"><br><br>
-      <button onclick="registrar()">Guardar</button>
+      <h3>Registrar actividad</h3><br>
+      <select id="persona" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:7px;font-size:14px;margin-bottom:10px"></select>
+      <select id="estado" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:7px;font-size:14px;margin-bottom:10px">
+        <option>Completado</option><option>Revisión</option>
+        <option>Rechazado</option><option>Otros</option>
+      </select>
+      <input type="number" id="tiempo" placeholder="Tiempo (minutos)"
+        style="width:100%;padding:9px;border:1px solid #ddd;border-radius:7px;font-size:14px;margin-bottom:10px">
+      <input type="text" id="comentarios" placeholder="Comentarios"
+        style="width:100%;padding:9px;border:1px solid #ddd;border-radius:7px;font-size:14px;margin-bottom:14px">
+      <button onclick="registrar()"
+        style="padding:10px 24px;background:#1D9E75;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">
+        Guardar registro
+      </button>
     </div>
   </div>
 
-  <!-- ADMIN -->
+  <!-- Vista Admin -->
   <div id="v-admin" class="view">
     <div class="card">
-      <h3>Administrar equipo</h3>
-      <input id="nuevoNombre" placeholder="Nombre"><br><br>
-      <select id="nuevoRol">
-        <option>Coordinador</option>
-        <option>Analista</option>
-        <option>Auxiliar</option>
-      </select><br><br>
-      <button onclick="agregarUsuario()">Agregar</button>
-      <hr><br>
+      <h3>Administrar equipo</h3><br>
+      <input id="nuevoNombre" placeholder="Nombre completo"
+        style="padding:9px;border:1px solid #ddd;border-radius:7px;font-size:14px;width:200px;margin-right:8px">
+      <select id="nuevoRol"
+        style="padding:9px;border:1px solid #ddd;border-radius:7px;font-size:14px;margin-right:8px">
+        <option>Coordinador</option><option>Analista</option><option>Auxiliar</option>
+      </select>
+      <button onclick="agregarUsuario()"
+        style="padding:9px 18px;background:#185FA5;color:#fff;border:none;border-radius:7px;font-size:14px;font-weight:700;cursor:pointer">
+        + Agregar
+      </button>
+      <hr style="margin:16px 0">
       <div id="admin-lista"></div>
     </div>
+    <div class="card">
+      <h3>🗑 Eliminar registros de pagos</h3><br>
+      <p style="color:#888;font-size:13px;margin-bottom:12px">
+        Haz clic en cualquier pago en la vista Coordinador para ver su detalle y eliminarlo.
+      </p>
+      <div id="pagos-admin"></div>
+    </div>
   </div>
+
 </div>
 
 <!-- MODAL -->
 <div id="modal" class="modal">
   <div class="modal-content">
-    <h3 id="modal-title"></h3>
+    <h3 id="modal-title" style="margin-bottom:14px"></h3>
     <div id="modal-body"></div>
     <br>
-    <button onclick="cerrarModal()">Cerrar</button>
+    <div style="display:flex;gap:8px">
+      <button id="modal-delete-btn"
+        style="display:none;padding:8px 16px;background:#c0392b;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:13px"
+        onclick="eliminarPagoModal()">
+        🗑 Eliminar este registro
+      </button>
+      <button onclick="cerrarModal()"
+        style="padding:8px 16px;border:1px solid #ddd;border-radius:7px;cursor:pointer;font-size:13px;background:#fff">
+        Cerrar
+      </button>
+    </div>
   </div>
 </div>
 
 <div id="toast"></div>
 
-<!-- FIREBASE REALTIME DATABASE -->
+<!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
@@ -150,17 +303,12 @@ const db  = getDatabase(app);
 window._guardarPago     = (d) => push(ref(db, "pagos"), d);
 window._guardarUsuario  = (d) => push(ref(db, "equipo"), d);
 window._eliminarUsuario = (id) => remove(ref(db, "equipo/" + id));
+window._eliminarPago    = (id) => remove(ref(db, "pagos/" + id));
 
 onValue(ref(db, "equipo"), (snap) => {
   const raw = snap.val() || {};
   window.equipo = Object.entries(raw).map(([id, v]) => ({ ...v, _id: id }));
-  const sel = document.getElementById("persona");
-  if (sel) {
-    const prev = sel.value;
-    sel.innerHTML = window.equipo.map(p => `<option>${p.nombre}</option>`).join("");
-    if (prev) sel.value = prev;
-  }
-  actualizarFiltroPersonas();
+  actualizarSelectPersonas();
   render();
 });
 
@@ -172,32 +320,128 @@ onValue(ref(db, "pagos"), (snap) => {
 </script>
 
 <script>
-window.equipo = [];
-window.pagos  = [];
-let chart;
+// ══════════════════════════════════════════
+//  CONFIGURACIÓN — cambia la contraseña aquí
+// ══════════════════════════════════════════
+const PASS_ADMIN = "admin2026";
+// ══════════════════════════════════════════
 
-function showToast(msg, color="#1D9E75"){
-  const t = document.getElementById("toast");
-  t.innerText = msg;
-  t.style.background = color;
-  t.style.display = "block";
-  setTimeout(() => t.style.display = "none", 2500);
+window.equipo   = [];
+window.pagos    = [];
+window.rolActivo = null;
+let chart;
+let pagoModalId = null;
+
+// ── Descripciones de rol ─────────────────
+const ROL_INFO = {
+  administrador: { desc:"Acceso total: ver, registrar, agregar y eliminar.", chip:"🔑 Administrador", chipCls:"badge-admin" },
+  consulta:      { desc:"Solo lectura: visualiza el dashboard.", chip:"👁 Consulta", chipCls:"badge-consulta" },
+  operacion:     { desc:"Puede ver el dashboard y registrar actividades.", chip:"⚙ Operación", chipCls:"badge-operacion" }
+};
+
+function cambiarRol(){
+  const rol = document.getElementById("login-rol").value;
+  const desc = document.getElementById("rol-desc");
+  const campoPass = document.getElementById("campo-password");
+  document.getElementById("login-error").style.display = "none";
+
+  if (!rol){ desc.style.display = "none"; campoPass.style.display = "none"; return; }
+
+  desc.style.display = "block";
+  desc.innerHTML = `<span class="login-badge badge-${rol}">${ROL_INFO[rol].chip}</span>
+    <div style="margin-top:6px">${ROL_INFO[rol].desc}</div>`;
+
+  campoPass.style.display = rol === "administrador" ? "block" : "none";
+  if (rol !== "administrador") document.getElementById("login-password").value = "";
 }
 
-function renderNav(){
-  document.getElementById("nav").innerHTML = `
-    <button class="nav-btn active" onclick="cambiarVista('coordinador',this)">Coordinador</button>
-    <button class="nav-btn" onclick="cambiarVista('registro',this)">Registrar</button>
-    <button class="nav-btn" onclick="cambiarVista('admin',this)">Administrar equipo</button>`;
+function doLogin(){
+  const rol  = document.getElementById("login-rol").value;
+  const pass = document.getElementById("login-password").value;
+  const err  = document.getElementById("login-error");
+
+  if (!rol){ mostrarError("Selecciona un tipo de usuario."); return; }
+
+  if (rol === "administrador"){
+    if (!pass){ mostrarError("Ingresa la contraseña."); return; }
+    if (pass !== PASS_ADMIN){ mostrarError("Contraseña incorrecta."); return; }
+  }
+
+  // Login exitoso
+  err.style.display = "none";
+  window.rolActivo  = rol;
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("app").style.display = "block";
+
+  // Chip topbar
+  const chip = document.getElementById("topbar-chip");
+  chip.textContent = ROL_INFO[rol].chip;
+  chip.className   = "rol-chip login-badge badge-" + rol;
+
+  buildNav();
+  render();
+}
+
+function mostrarError(msg){
+  const el = document.getElementById("login-error");
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
+function logout(){
+  window.rolActivo = null;
+  document.getElementById("app").style.display = "none";
+  document.getElementById("login-screen").style.display = "flex";
+  document.getElementById("login-rol").value = "";
+  document.getElementById("login-password").value = "";
+  document.getElementById("login-error").style.display = "none";
+  document.getElementById("campo-password").style.display = "none";
+  document.getElementById("rol-desc").style.display = "none";
+}
+
+// ── Construir nav según rol ──────────────
+function buildNav(){
+  const rol = window.rolActivo;
+  let tabs  = [];
+
+  if (rol === "administrador"){
+    tabs = [
+      { id:"coordinador", label:"📊 Coordinador" },
+      { id:"registro",    label:"+ Registrar"   },
+      { id:"admin",       label:"⚙ Administrar" }
+    ];
+  } else if (rol === "operacion"){
+    tabs = [
+      { id:"coordinador", label:"📊 Coordinador" },
+      { id:"registro",    label:"+ Registrar"   }
+    ];
+  } else {
+    // consulta — solo coordinador, sin botón
+    tabs = [{ id:"coordinador", label:"📊 Coordinador" }];
+  }
+
+  document.getElementById("nav").innerHTML = tabs.map((t, i) =>
+    `<button class="nav-btn ${i===0?'active':''}" onclick="cambiarVista('${t.id}',this)">
+      ${t.label}
+    </button>`
+  ).join("");
+
+  // Mostrar primera vista
+  cambiarVista("coordinador", document.querySelector(".nav-btn.active"));
+
+  // Mostrar/ocultar barra exportar según rol
+  const barra = document.getElementById("barra-exportar");
+  if (barra) barra.style.display = rol === "consulta" ? "none" : "flex";
 }
 
 function cambiarVista(id, btn){
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('v-' + id).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
 }
 
+// ── Firebase helpers ─────────────────────
 function registrar(){
   const datos = {
     persona:     document.getElementById("persona").value,
@@ -225,188 +469,160 @@ function agregarUsuario(){
   });
 }
 
-function eliminar(id){
-  window._eliminarUsuario(id).then(() => showToast("Usuario eliminado", "#E24B4A"));
+function eliminarUsuario(id){
+  if (!confirm("¿Eliminar este colaborador?")) return;
+  window._eliminarUsuario(id).then(() => showToast("Eliminado", "#E24B4A"));
 }
 
-function editar(i){
-  const nuevo = prompt("Nuevo nombre", window.equipo[i].nombre);
-  if (nuevo){ window.equipo[i].nombre = nuevo; render(); }
+function eliminarPagoModal(){
+  if (!pagoModalId) return;
+  if (!confirm("¿Eliminar este registro de pago?")) return;
+  window._eliminarPago(pagoModalId).then(() => {
+    showToast("Registro eliminado", "#E24B4A");
+    cerrarModal();
+  });
+}
+
+// ── Modal ────────────────────────────────
+function verDetalleRegistro(id){
+  const p = window.pagos.find(x => x._id === id);
+  if (!p) return;
+  pagoModalId = id;
+  document.getElementById("modal-title").innerText = "Detalle registro";
+  document.getElementById("modal-body").innerHTML = `
+    <div style="display:grid;gap:6px;font-size:14px">
+      <div><b>Persona:</b> ${p.persona}</div>
+      <div><b>Fecha:</b> ${p.fecha || "—"}</div>
+      <div><b>Hora:</b> ${p.hora}:00</div>
+      <div><b>Estado:</b> ${p.estado}</div>
+      <div><b>Tiempo:</b> ${p.tiempo || "—"} min</div>
+      <div><b>Comentarios:</b> ${p.comentarios || "—"}</div>
+    </div>`;
+  // Botón eliminar solo para admin
+  document.getElementById("modal-delete-btn").style.display =
+    window.rolActivo === "administrador" ? "inline-block" : "none";
+  document.getElementById("modal").style.display = "flex";
 }
 
 function verDetalle(nombre){
   const data = window.pagos.filter(p => p.persona === nombre);
   document.getElementById("modal-title").innerText = nombre;
   document.getElementById("modal-body").innerHTML = data.length
-    ? data.map(p =>
-        `<div style="padding:6px 0;border-bottom:1px solid #eee">
-          <b>${p.fecha || ''} ${p.hora}:00</b> — 
-          ${p.estado} (${p.tiempo || 0} min)
-          ${p.comentarios ? '<br><small style="color:#888">' + p.comentarios + '</small>' : ''}
+    ? data.sort((a,b)=>(b.ts||0)-(a.ts||0)).map(p =>
+        `<div style="padding:7px 0;border-bottom:1px solid #eee;font-size:13px">
+          <b>${p.fecha||''} ${p.hora}:00</b> —
+          <span class="badge ${p.estado==='Completado'?'ok':p.estado==='Revisión'?'warn':'bad'}">${p.estado}</span>
+          (${p.tiempo||0} min)
+          ${p.comentarios?`<br><span style="color:#888">${p.comentarios}</span>`:''}
         </div>`).join("")
-    : "Sin actividad registrada";
-  document.getElementById("modal").style.display = "flex";
-}
-
-function verDetalleRegistro(i){
-  const p = window.pagos[i];
-  document.getElementById("modal-title").innerText = "Detalle registro";
-  document.getElementById("modal-body").innerHTML = `
-    <div><b>Persona:</b> ${p.persona}</div>
-    <div><b>Fecha:</b> ${p.fecha || '—'}</div>
-    <div><b>Hora:</b> ${p.hora}:00</div>
-    <div><b>Estado:</b> ${p.estado}</div>
-    <div><b>Tiempo:</b> ${p.tiempo || "—"} min</div>
-    <div><b>Comentarios:</b> ${p.comentarios || "—"}</div>`;
+    : "<p style='color:#999'>Sin actividad registrada.</p>";
+  document.getElementById("modal-delete-btn").style.display = "none";
   document.getElementById("modal").style.display = "flex";
 }
 
 function cerrarModal(){
   document.getElementById("modal").style.display = "none";
+  pagoModalId = null;
 }
 
-// ── Actualizar filtro de personas en la barra de exportación ──
-function actualizarFiltroPersonas(){
-  const sel = document.getElementById("filtro-persona");
-  if (!sel) return;
-  const prev = sel.value;
-  sel.innerHTML = '<option value="">Todas las personas</option>' +
-    window.equipo.map(p => `<option>${p.nombre}</option>`).join("");
-  if (prev) sel.value = prev;
-}
-
-// ── EXPORTAR A CSV ────────────────────────────────────────
+// ── Exportar CSV ─────────────────────────
 function exportarCSV(){
   const persona = document.getElementById("filtro-persona").value;
   const estado  = document.getElementById("filtro-estado").value;
   const desde   = document.getElementById("filtro-desde").value;
   const hasta   = document.getElementById("filtro-hasta").value;
-
-  // Filtrar datos
   let datos = [...window.pagos];
-
   if (persona) datos = datos.filter(p => p.persona === persona);
   if (estado)  datos = datos.filter(p => p.estado  === estado);
-  if (desde)   datos = datos.filter(p => {
-    if (!p.ts) return true;
-    return new Date(p.ts) >= new Date(desde);
-  });
-  if (hasta)   datos = datos.filter(p => {
-    if (!p.ts) return true;
-    return new Date(p.ts) <= new Date(hasta + "T23:59:59");
-  });
-
-  if (!datos.length){
-    showToast("No hay datos con esos filtros", "#E24B4A");
-    return;
-  }
-
-  // Ordenar por fecha/hora
-  datos.sort((a, b) => (a.ts || 0) - (b.ts || 0));
-
-  // Construir CSV
-  const encabezado = ["Fecha", "Hora", "Persona", "Estado", "Tiempo (min)", "Comentarios"];
-
+  if (desde)   datos = datos.filter(p => !p.ts || new Date(p.ts) >= new Date(desde));
+  if (hasta)   datos = datos.filter(p => !p.ts || new Date(p.ts) <= new Date(hasta+"T23:59:59"));
+  if (!datos.length){ showToast("Sin datos con esos filtros","#E24B4A"); return; }
+  datos.sort((a,b)=>(a.ts||0)-(b.ts||0));
+  const enc = ["Fecha","Hora","Persona","Estado","Tiempo (min)","Comentarios"];
   const filas = datos.map(p => {
-    const fecha = p.ts
-      ? new Date(p.ts).toLocaleDateString('es-CO')
-      : (p.fecha || "—");
-    const hora = p.ts
-      ? new Date(p.ts).toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'})
-      : (p.hora !== undefined ? p.hora + ":00" : "—");
-    // Escapar comas y comillas en comentarios
-    const comentario = (p.comentarios || "").replace(/"/g, '""');
-    return [
-      fecha,
-      hora,
-      p.persona || "—",
-      p.estado  || "—",
-      p.tiempo  || "0",
-      `"${comentario}"`
-    ];
+    const f = p.ts ? new Date(p.ts).toLocaleDateString('es-CO') : (p.fecha||"—");
+    const h = p.ts ? new Date(p.ts).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}) : (p.hora!==undefined?p.hora+":00":"—");
+    return [f, h, p.persona||"—", p.estado||"—", p.tiempo||"0", `"${(p.comentarios||"").replace(/"/g,'""')}"`];
   });
-
-  const csvContent = [encabezado, ...filas]
-    .map(fila => fila.join(";"))   // punto y coma para Excel en español
-    .join("\n");
-
-  // Agregar BOM para que Excel abra con tildes correctas
-  const bom = "\uFEFF";
-  const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
+  const csv  = [enc,...filas].map(r=>r.join(";")).join("\n");
+  const blob = new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
   const url  = URL.createObjectURL(blob);
-
-  // Nombre del archivo con fecha
-  const hoy = new Date().toLocaleDateString('es-CO').replace(/\//g, "-");
-  const nombreArchivo = `Productividad_${persona || "Equipo"}_${hoy}.csv`;
-
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = nombreArchivo;
-  link.click();
-  URL.revokeObjectURL(url);
-
-  showToast(`✓ Descargado: ${nombreArchivo}`);
+  const hoy  = new Date().toLocaleDateString('es-CO').replace(/\//g,"-");
+  const a    = document.createElement("a");
+  a.href = url; a.download = `Productividad_${persona||"Equipo"}_${hoy}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast("✓ Archivo descargado");
 }
 
-// ── Render ────────────────────────────────────────────────
+// ── Render ────────────────────────────────
+function actualizarSelectPersonas(){
+  ["persona","filtro-persona"].forEach(id => {
+    const sel = document.getElementById(id); if (!sel) return;
+    const prev = sel.value;
+    sel.innerHTML = (id==="filtro-persona"?'<option value="">Todas las personas</option>':'') +
+      window.equipo.map(p=>`<option>${p.nombre}</option>`).join("");
+    if (prev) sel.value = prev;
+  });
+}
+
 function render(){
-  document.getElementById("lista").innerHTML =
-    window.equipo.length
-      ? window.equipo.map(p => {
-          const total = window.pagos.filter(x => x.persona === p.nombre).length;
-          return `<div class="member-row" onclick="verDetalle('${p.nombre}')">
-            <span>${p.nombre} <small style="color:#999">(${p.rol})</small></span>
-            <span>${total} ops</span>
-          </div>`;
-        }).join("")
-      : "<p style='color:#999;padding:10px'>Sin colaboradores. Agrégalos en Administrar equipo.</p>";
+  if (!window.rolActivo) return;
 
-  const sel = document.getElementById("persona");
-  if (sel && !sel.options.length)
-    sel.innerHTML = window.equipo.map(p => `<option>${p.nombre}</option>`).join("");
+  // Lista equipo
+  const lista = document.getElementById("lista");
+  if (lista) lista.innerHTML = window.equipo.length
+    ? window.equipo.map(p => {
+        const total = window.pagos.filter(x=>x.persona===p.nombre).length;
+        return `<div class="member-row" onclick="verDetalle('${p.nombre}')">
+          <span>${p.nombre} <small style="color:#aaa">(${p.rol})</small></span>
+          <span style="font-weight:700">${total} ops</span>
+        </div>`;
+      }).join("")
+    : "<p style='color:#999;padding:10px'>Sin colaboradores configurados.</p>";
 
-  document.getElementById("descripcion-pagos").innerHTML =
-    window.pagos.length
-      ? window.pagos.map((p, i) => {
-          const cls = p.estado === "Completado" ? "ok"
-                    : p.estado === "Revisión"   ? "warn" : "bad";
-          return `<div class="member-row" onclick="verDetalleRegistro(${i})">
-            <span>${p.persona} <small style="color:#aaa">${p.fecha || ''}</small></span>
-            <span class="badge ${cls}">${p.estado}</span>
-          </div>`;
-        }).join("")
-      : "<p style='color:#999;padding:10px'>Sin pagos registrados aún.</p>";
+  // Pagos
+  const dpagos = document.getElementById("descripcion-pagos");
+  if (dpagos) dpagos.innerHTML = window.pagos.length
+    ? [...window.pagos].sort((a,b)=>(b.ts||0)-(a.ts||0)).map(p => {
+        const cls = p.estado==="Completado"?"ok":p.estado==="Revisión"?"warn":"bad";
+        return `<div class="member-row" onclick="verDetalleRegistro('${p._id}')">
+          <span>${p.persona} <small style="color:#aaa">${p.fecha||''}</small></span>
+          <span class="badge ${cls}">${p.estado}</span>
+        </div>`;
+      }).join("")
+    : "<p style='color:#999;padding:10px'>Sin pagos registrados aún.</p>";
 
-  document.getElementById("admin-lista").innerHTML =
-    window.equipo.map((p, i) =>
-      `<div class="member-row">
-        <span>${p.nombre} (${p.rol})</span>
-        <div>
-          <button class="btn-mini" onclick="editar(${i})">Editar</button>
-          <button class="btn-mini" onclick="eliminar('${p._id}')">Eliminar</button>
-        </div>
-      </div>`
-    ).join("");
+  // Admin lista
+  const adminLista = document.getElementById("admin-lista");
+  if (adminLista) adminLista.innerHTML = window.equipo.length
+    ? window.equipo.map(p =>
+        `<div class="member-row">
+          <span>${p.nombre} <small style="color:#aaa">(${p.rol})</small></span>
+          <button class="btn-mini danger" onclick="eliminarUsuario('${p._id}')">Eliminar</button>
+        </div>`).join("")
+    : "<p style='color:#999'>Sin colaboradores.</p>";
 
+  actualizarSelectPersonas();
   renderGrafico();
 }
 
 function renderGrafico(){
-  const horas = Array(24).fill(0);
-  window.pagos.forEach(p => { if (p.hora !== undefined) horas[p.hora]++; });
+  const canvas = document.getElementById("grafico"); if (!canvas) return;
+  const horas  = Array(24).fill(0);
+  window.pagos.forEach(p => { if (p.hora!==undefined) horas[p.hora]++; });
   if (chart) chart.destroy();
-  chart = new Chart(document.getElementById('grafico'), {
-    type: 'bar',
-    data: {
-      labels: horas.map((_, i) => i + ":00"),
-      datasets: [{ data: horas, backgroundColor: '#1D9E75' }]
-    },
-    options: { plugins: { legend: { display: false } } }
+  chart = new Chart(canvas, {
+    type: "bar",
+    data: { labels: horas.map((_,i)=>i+":00"), datasets:[{data:horas,backgroundColor:"#1D9E75",borderRadius:4}] },
+    options: { plugins:{legend:{display:false}}, scales:{x:{ticks:{maxTicksLimit:12}}} }
   });
 }
 
-renderNav();
-render();
+function showToast(msg, color="#1D9E75"){
+  const t = document.getElementById("toast");
+  t.innerText = msg; t.style.background = color; t.style.display = "block";
+  setTimeout(()=>t.style.display="none", 2500);
+}
 </script>
 </body>
 </html>
