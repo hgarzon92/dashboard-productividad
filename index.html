@@ -1,17 +1,99 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-
 <meta charset="UTF-8">
 <title>Dashboard Productividad</title>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{font-family:Arial;background:#f6f8fb;padding:20px}
+.nav{display:flex;gap:10px;margin-bottom:20px}
+.nav-btn{padding:8px 14px;border-radius:20px;border:1px solid #ddd;cursor:pointer}
+.nav-btn.active{background:#1D9E75;color:#fff}
+.view{display:none}
+.view.active{display:block}
+.card{background:#fff;padding:16px;border-radius:12px;margin-bottom:12px}
+.member-row{display:flex;justify-content:space-between;padding:10px;border-bottom:1px solid #eee;cursor:pointer;align-items:center;gap:10px}
+.badge{padding:3px 8px;border-radius:10px;font-size:11px}
+.ok{background:#e6f7f1}.warn{background:#fff3cd}.bad{background:#fdecec}
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center}
+.modal-content{background:#fff;padding:20px;border-radius:12px;width:400px;max-height:80vh;overflow:auto}
+#toast{position:fixed;bottom:20px;right:20px;background:#1D9E75;color:#fff;padding:12px 18px;border-radius:8px;display:none}
+.btn-mini{padding:4px 8px;border:1px solid #ddd;border-radius:6px;cursor:pointer;font-size:11px;background:#fff}
+</style>
+</head>
+<body>
+<div id="app">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+    <div class="nav" id="nav"></div>
+  </div>
+
+  <!-- COORDINADOR -->
+  <div id="v-coordinador" class="view active">
+    <div class="card">
+      <h3>📊 Operaciones por hora</h3>
+      <canvas id="grafico"></canvas>
+    </div>
+    <div class="card">
+      <h3>👥 Equipo operativo</h3>
+      <div id="lista"></div>
+    </div>
+    <div class="card">
+      <h3>🧾 Pagos registrados</h3>
+      <div id="descripcion-pagos"></div>
+    </div>
+  </div>
+
+  <!-- REGISTRO -->
+  <div id="v-registro" class="view">
+    <div class="card">
+      <h3>Registrar actividad</h3>
+      <select id="persona"></select><br><br>
+      <select id="estado">
+        <option>Completado</option>
+        <option>Revisión</option>
+        <option>Rechazado</option>
+        <option>Otros</option>
+      </select><br><br>
+      <input type="number" id="tiempo" placeholder="Tiempo (minutos)"><br><br>
+      <input type="text" id="comentarios" placeholder="Comentarios"><br><br>
+      <button onclick="registrar()">Guardar</button>
+    </div>
+  </div>
+
+  <!-- ADMIN -->
+  <div id="v-admin" class="view">
+    <div class="card">
+      <h3>Administrar equipo</h3>
+      <input id="nuevoNombre" placeholder="Nombre"><br><br>
+      <select id="nuevoRol">
+        <option>Coordinador</option>
+        <option>Analista</option>
+        <option>Auxiliar</option>
+      </select><br><br>
+      <button onclick="agregarUsuario()">Agregar</button>
+      <hr><br>
+      <div id="admin-lista"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="modal" class="modal">
+  <div class="modal-content">
+    <h3 id="modal-title"></h3>
+    <div id="modal-body"></div>
+    <br>
+    <button onclick="cerrarModal()">Cerrar</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
-  getFirestore,
-  collection,
-  addDoc,
+  getFirestore, collection, addDoc, deleteDoc, doc,
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
@@ -25,399 +107,204 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db  = getFirestore(app);
 
-/* lo dejamos disponible para tu código */
-window._db = db;
-window._addDoc = addDoc;
-window._collection = collection;
-window._onSnapshot = onSnapshot;
+// ── Exponer funciones de escritura ──────────────────────
+window._guardarPago = (datos) => addDoc(collection(db, "pagos"), datos);
+window._guardarUsuario = (datos) => addDoc(collection(db, "equipo"), datos);
+window._eliminarUsuario = (id) => deleteDoc(doc(db, "equipo", id));
+
+// ── Escuchas en tiempo real ─────────────────────────────
+// Cada vez que cambia "equipo" en Firebase → actualiza array local + re-render
+onSnapshot(collection(db, "equipo"), (snap) => {
+  window.equipo = snap.docs.map(d => ({ ...d.data(), _id: d.id }));
+  // Sincronizar select de persona en formulario de registro
+  const sel = document.getElementById("persona");
+  if (sel) {
+    const prev = sel.value;
+    sel.innerHTML = window.equipo.map(p => `<option>${p.nombre}</option>`).join("");
+    if (prev) sel.value = prev;
+  }
+  render();
+});
+
+// Cada vez que cambia "pagos" en Firebase → actualiza array local + re-render
+onSnapshot(collection(db, "pagos"), (snap) => {
+  window.pagos = snap.docs.map(d => ({ ...d.data(), _id: d.id }));
+  render();
+});
 </script>
-<style>
-body{font-family:Arial;background:#f6f8fb;padding:20px}
-
-.nav{display:flex;gap:10px;margin-bottom:20px}
-.nav-btn{padding:8px 14px;border-radius:20px;border:1px solid #ddd;cursor:pointer}
-.nav-btn.active{background:#1D9E75;color:#fff}
-
-.view{display:none}
-.view.active{display:block}
-
-.card{background:#fff;padding:16px;border-radius:12px;margin-bottom:12px}
-
-.member-row{
-display:flex;
-justify-content:space-between;
-padding:10px;
-border-bottom:1px solid #eee;
-cursor:pointer;
-align-items:center;
-gap:10px;
-}
-
-.badge{padding:3px 8px;border-radius:10px;font-size:11px}
-.ok{background:#e6f7f1}
-.warn{background:#fff3cd}
-.bad{background:#fdecec}
-
-.modal{
-position:fixed;
-top:0;left:0;
-width:100%;height:100%;
-background:rgba(0,0,0,.4);
-display:none;
-align-items:center;
-justify-content:center;
-}
-.modal-content{
-background:#fff;
-padding:20px;
-border-radius:12px;
-width:400px;
-max-height:80vh;
-overflow:auto;
-}
-
-/* TOAST */
-#toast{
-position:fixed;
-bottom:20px;
-right:20px;
-background:#1D9E75;
-color:#fff;
-padding:12px 18px;
-border-radius:8px;
-display:none;
-}
-
-/* botones pequeños */
-.btn-mini{
-padding:4px 8px;
-border:1px solid #ddd;
-border-radius:6px;
-cursor:pointer;
-font-size:11px;
-background:#fff;
-}
-</style>
-</head>
-
-<body>
-
-<!-- APP -->
-<div id="app">
-
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
-  <div class="nav" id="nav"></div>
-</div>
-
-<!-- ================= COORDINADOR ================= -->
-<div id="v-coordinador" class="view active">
-
-<div class="card">
-<h3>📊 Operaciones por hora</h3>
-<canvas id="grafico"></canvas>
-</div>
-
-<div class="card">
-<h3>👥 Equipo operativo</h3>
-<div id="lista"></div>
-</div>
-
-<div class="card">
-<h3>🧾 Pagos registrados</h3>
-<div id="descripcion-pagos"></div>
-</div>
-
-</div>
-
-<!-- ================= REGISTRO ================= -->
-<div id="v-registro" class="view">
-<div class="card">
-<h3>Registrar actividad</h3>
-
-<select id="persona"></select><br><br>
-
-<select id="estado">
-<option>Completado</option>
-<option>Revisión</option>
-<option>Rechazado</option>
-<option>Otros</option>
-</select><br><br>
-
-<input type="number" id="tiempo" placeholder="Tiempo (minutos)"><br><br>
-
-<input type="text" id="comentarios" placeholder="Comentarios"><br><br>
-
-<button onclick="registrar()">Guardar</button>
-</div>
-</div>
-
-<!-- ================= ADMIN ================= -->
-<div id="v-admin" class="view">
-<div class="card">
-<h3>Administrar equipo</h3>
-
-<input id="nuevoNombre" placeholder="Nombre"><br><br>
-
-<select id="nuevoRol">
-<option>Coordinador</option>
-<option>Analista</option>
-<option>Auxiliar</option>
-</select><br><br>
-
-<button onclick="agregarUsuario()">Agregar</button>
-
-<hr><br>
-
-<div id="admin-lista"></div>
-</div>
-</div>
-
-</div>
-
-<!-- MODAL -->
-<div id="modal" class="modal">
-<div class="modal-content">
-<h3 id="modal-title"></h3>
-<div id="modal-body"></div>
-<br>
-<button onclick="cerrarModal()">Cerrar</button>
-</div>
-</div>
-
-<!-- TOAST -->
-<div id="toast"></div>
 
 <script>
-
-let rol = "admin"; // 🔥 sin login, acceso total
-
-let equipo=[
-{nombre:"Ana",rol:"Analista"},
-{nombre:"Luis",rol:"Auxiliar"}
-];
-
-let pagos=[];
+// ── Estado local (se sobreescribe por onSnapshot) ───────
+window.equipo = [];
+window.pagos  = [];
 let chart;
 
-/* ===== TOAST ===== */
-function showToast(msg,color="#1D9E75"){
-let t=document.getElementById("toast");
-t.innerText=msg;
-t.style.background=color;
-t.style.display="block";
-setTimeout(()=>t.style.display="none",2000);
+// ── Toast ────────────────────────────────────────────────
+function showToast(msg, color="#1D9E75"){
+  const t = document.getElementById("toast");
+  t.innerText = msg;
+  t.style.background = color;
+  t.style.display = "block";
+  setTimeout(() => t.style.display = "none", 2000);
 }
 
-/* NAV */
+// ── Nav ──────────────────────────────────────────────────
 function renderNav(){
-let nav=document.getElementById("nav");
-
-let botones=[];
-botones.push(`<button class="nav-btn active" onclick="cambiarVista('coordinador',this)">Coordinador</button>`);
-
-if(rol==="operacion"||rol==="admin"){
-botones.push(`<button class="nav-btn" onclick="cambiarVista('registro',this)">Registrar</button>`);
+  document.getElementById("nav").innerHTML = `
+    <button class="nav-btn active" onclick="cambiarVista('coordinador',this)">Coordinador</button>
+    <button class="nav-btn" onclick="cambiarVista('registro',this)">Registrar</button>
+    <button class="nav-btn" onclick="cambiarVista('admin',this)">Administrar equipo</button>`;
 }
 
-if(rol==="admin"){
-botones.push(`<button class="nav-btn" onclick="cambiarVista('admin',this)">Administrar equipo</button>`);
+function cambiarVista(id, btn){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('v-' + id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
 }
 
-nav.innerHTML=botones.join("");
-}
-
-function cambiarVista(id,btn){
-document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-document.getElementById('v-'+id).classList.add('active');
-
-document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-btn.classList.add('active');
-}
-
-/* REGISTRAR */
+// ── Registrar pago → guarda en Firebase ─────────────────
 function registrar(){
-let persona=document.getElementById("persona").value;
-let estado=document.getElementById("estado").value;
-let tiempo=document.getElementById("tiempo").value;
-let comentarios=document.getElementById("comentarios").value;
+  const datos = {
+    persona:      document.getElementById("persona").value,
+    estado:       document.getElementById("estado").value,
+    tiempo:       document.getElementById("tiempo").value,
+    comentarios:  document.getElementById("comentarios").value,
+    hora:         new Date().getHours(),
+    ts:           Date.now()
+  };
 
-pagos.push({persona,estado,tiempo,comentarios,hora:new Date().getHours()});
-
-showToast("Registro guardado correctamente");
-
-render();
+  // _guardarPago llama addDoc en Firebase
+  // onSnapshot detecta el cambio y llama render() automáticamente
+  window._guardarPago(datos).then(() => {
+    showToast("Registro guardado ✓");
+    document.getElementById("tiempo").value = "";
+    document.getElementById("comentarios").value = "";
+  });
 }
 
-/* PAGOS */
-function renderPagos(){
-let c=document.getElementById("descripcion-pagos");
+// ── Agregar usuario → guarda en Firebase ────────────────
+function agregarUsuario(){
+  const nombre = document.getElementById("nuevoNombre").value.trim();
+  const rol    = document.getElementById("nuevoRol").value;
+  if (!nombre) return;
 
-c.innerHTML=pagos.map((p,i)=>{
-let cls=p.estado=="Completado"?"ok":p.estado=="Revisión"?"warn":"bad";
-
-return `<div class="member-row" onclick="verDetalleRegistro(${i})">
-<span>${p.persona}</span>
-<span class="badge ${cls}">${p.estado}</span>
-</div>`;
-}).join("");
+  window._guardarUsuario({ nombre, rol }).then(() => {
+    showToast("Usuario agregado ✓");
+    document.getElementById("nuevoNombre").value = "";
+  });
 }
 
-/* DETALLE */
+// ── Eliminar usuario ─────────────────────────────────────
+function eliminar(id){
+  window._eliminarUsuario(id).then(() => {
+    showToast("Usuario eliminado", "#E24B4A");
+  });
+}
+
+// ── Editar nombre (solo local, sin Firebase para simplificar) ──
+function editar(i){
+  const nuevo = prompt("Nuevo nombre", window.equipo[i].nombre);
+  if (nuevo) {
+    window.equipo[i].nombre = nuevo;
+    showToast("Actualizado (recarga para persistir)", "#185FA5");
+    render();
+  }
+}
+
+// ── Detalle persona ──────────────────────────────────────
+function verDetalle(nombre){
+  const data = window.pagos.filter(p => p.persona === nombre);
+  document.getElementById("modal-title").innerText = nombre;
+  document.getElementById("modal-body").innerHTML =
+    data.length
+      ? data.map(p => `<div>${p.hora}:00 — ${p.estado} (${p.tiempo || 0} min)${p.comentarios ? ' · ' + p.comentarios : ''}</div>`).join("")
+      : "Sin actividad registrada";
+  document.getElementById("modal").style.display = "flex";
+}
+
+// ── Detalle registro ─────────────────────────────────────
 function verDetalleRegistro(i){
-let p=pagos[i];
-
-document.getElementById("modal-title").innerText="Detalle registro";
-
-document.getElementById("modal-body").innerHTML=`
-<div><b>Persona:</b> ${p.persona}</div>
-<div><b>Estado:</b> ${p.estado}</div>
-<div><b>Hora:</b> ${p.hora}:00</div>
-<div><b>Tiempo:</b> ${p.tiempo||"-"} min</div>
-<div><b>Comentarios:</b> ${p.comentarios||"-"}</div>
-`;
-
-document.getElementById("modal").style.display="flex";
+  const p = window.pagos[i];
+  document.getElementById("modal-title").innerText = "Detalle registro";
+  document.getElementById("modal-body").innerHTML = `
+    <div><b>Persona:</b> ${p.persona}</div>
+    <div><b>Estado:</b> ${p.estado}</div>
+    <div><b>Hora:</b> ${p.hora}:00</div>
+    <div><b>Tiempo:</b> ${p.tiempo || "-"} min</div>
+    <div><b>Comentarios:</b> ${p.comentarios || "-"}</div>`;
+  document.getElementById("modal").style.display = "flex";
 }
 
 function cerrarModal(){
-document.getElementById("modal").style.display="none";
+  document.getElementById("modal").style.display = "none";
 }
 
-/* RENDER */
+// ── Render principal (se llama cada vez que Firebase actualiza) ──
 function render(){
-let lista=document.getElementById("lista");
+  // Lista equipo
+  document.getElementById("lista").innerHTML =
+    window.equipo.map(p => {
+      const total = window.pagos.filter(x => x.persona === p.nombre).length;
+      return `<div class="member-row" onclick="verDetalle('${p.nombre}')">
+        <span>${p.nombre} <small style="color:#999">(${p.rol})</small></span>
+        <span>${total} ops</span>
+      </div>`;
+    }).join("") || "<p style='color:#999;padding:10px'>Sin colaboradores aún. Agrégalos en Administrar equipo.</p>";
 
-lista.innerHTML=equipo.map(p=>{
-let total=pagos.filter(x=>x.persona===p.nombre).length;
+  // Select personas en formulario registro
+  const sel = document.getElementById("persona");
+  if (sel && !sel.options.length) {
+    sel.innerHTML = window.equipo.map(p => `<option>${p.nombre}</option>`).join("");
+  }
 
-return `<div class="member-row" onclick="verDetalle('${p.nombre}')">
-<span>${p.nombre}</span>
-<span>${total} ops</span>
-</div>`;
-}).join("");
+  // Pagos
+  document.getElementById("descripcion-pagos").innerHTML =
+    window.pagos.length
+      ? window.pagos.map((p, i) => {
+          const cls = p.estado === "Completado" ? "ok" : p.estado === "Revisión" ? "warn" : "bad";
+          return `<div class="member-row" onclick="verDetalleRegistro(${i})">
+            <span>${p.persona}</span>
+            <span class="badge ${cls}">${p.estado}</span>
+          </div>`;
+        }).join("")
+      : "<p style='color:#999;padding:10px'>Sin pagos registrados aún.</p>";
 
-document.getElementById("persona").innerHTML=equipo.map(p=>`<option>${p.nombre}</option>`).join("");
+  // Admin lista
+  document.getElementById("admin-lista").innerHTML =
+    window.equipo.map((p, i) =>
+      `<div class="member-row">
+        <span>${p.nombre} (${p.rol})</span>
+        <div>
+          <button class="btn-mini" onclick="editar(${i})">Editar</button>
+          <button class="btn-mini" onclick="eliminar('${p._id}')">Eliminar</button>
+        </div>
+      </div>`
+    ).join("");
 
-renderPagos();
-renderGrafico();
-renderAdmin();
+  renderGrafico();
 }
 
-/* ADMIN LISTA */
-function renderAdmin(){
-let admin=document.getElementById("admin-lista");
-
-admin.innerHTML=equipo.map((p,i)=>`
-<div class="member-row">
-<span>${p.nombre} (${p.rol})</span>
-
-<div>
-<button class="btn-mini" onclick="editar(${i})">Editar</button>
-<button class="btn-mini" onclick="eliminar(${i})">Eliminar</button>
-</div>
-</div>
-`).join("");
-}
-
-/* AGREGAR */
-function agregarUsuario(){
-let n=document.getElementById("nuevoNombre").value;
-let r=document.getElementById("nuevoRol").value;
-
-if(!n) return;
-
-equipo.push({nombre:n,rol:r});
-
-showToast("Usuario agregado");
-render();
-}
-
-/* ELIMINAR */
-function eliminar(i){
-equipo.splice(i,1);
-showToast("Usuario eliminado","#E24B4A");
-render();
-}
-
-/* EDITAR */
-function editar(i){
-let nuevo=prompt("Nuevo nombre",equipo[i].nombre);
-if(nuevo){
-equipo[i].nombre=nuevo;
-showToast("Usuario actualizado","#185FA5");
-render();
-}
-}
-
-/* DETALLE PERSONA */
-function verDetalle(nombre){
-let data=pagos.filter(p=>p.persona===nombre);
-
-let html=data.map(p=>`
-<div>${p.hora}:00 - ${p.estado} (${p.tiempo||0} min)</div>
-`).join("");
-
-document.getElementById("modal-title").innerText=nombre;
-document.getElementById("modal-body").innerHTML=html || "Sin actividad";
-
-document.getElementById("modal").style.display="flex";
-}
-
-/* GRAFICO */
+// ── Gráfico ──────────────────────────────────────────────
 function renderGrafico(){
-let horas=Array(24).fill(0);
-
-pagos.forEach(p=>horas[p.hora]++);
-
-if(chart) chart.destroy();
-
-chart=new Chart(document.getElementById('grafico'),{
-type:'bar',
-data:{labels:horas.map((_,i)=>i+":00"),datasets:[{data:horas}]},
-options:{plugins:{legend:{display:false}}}
-});
+  const horas = Array(24).fill(0);
+  window.pagos.forEach(p => { if (p.hora !== undefined) horas[p.hora]++; });
+  if (chart) chart.destroy();
+  chart = new Chart(document.getElementById('grafico'), {
+    type: 'bar',
+    data: {
+      labels: horas.map((_, i) => i + ":00"),
+      datasets: [{ data: horas, backgroundColor: '#1D9E75' }]
+    },
+    options: { plugins: { legend: { display: false } } }
+  });
 }
 
-/* INIT */
+// ── Init ─────────────────────────────────────────────────
 renderNav();
-render();
-_onSnapshot(_collection(_db,"equipo"), (snap)=>{
-equipo = snap.docs.map(d=>d.data());
-render();
-});
-
-_onSnapshot(_collection(_db,"pagos"), (snap)=>{
-pagos = snap.docs.map(d=>d.data());
-render();
-});
-
-/* SOLO CAMBIAMOS LO NECESARIO */
-
-registrar = function(){
-
-_addDoc(_collection(_db,"pagos"),{
-persona: document.getElementById("persona").value,
-estado: document.getElementById("estado").value,
-tiempo: document.getElementById("tiempo").value,
-comentarios: document.getElementById("comentarios").value,
-hora:new Date().getHours()
-});
-
-showToast("Guardado en Firebase");
-};
-
-agregarUsuario = function(){
-
-_addDoc(_collection(_db,"equipo"),{
-nombre: document.getElementById("nuevoNombre").value,
-rol: document.getElementById("nuevoRol").value
-});
-
-showToast("Usuario guardado");
-};
+render(); // render inicial mientras Firebase carga
 </script>
-
 </body>
 </html>
