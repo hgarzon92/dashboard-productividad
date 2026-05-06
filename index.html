@@ -205,7 +205,18 @@ body{font-family:Arial;background:#f6f8fb;min-height:100vh}
       <div id="lista"></div>
     </div>
     <div class="card">
-      <h3>🧾 Pagos registrados</h3>
+      <h3>🧾 Pagos registrados
+        <span style="float:right;display:flex;align-items:center;gap:8px">
+          <label style="font-size:12px;color:#888;font-weight:normal">Ver fecha:</label>
+          <input type="date" id="vista-fecha"
+            style="padding:5px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px"
+            onchange="render()">
+          <button onclick="resetVistFecha()"
+            style="padding:4px 10px;border:1px solid #ddd;border-radius:6px;font-size:11px;cursor:pointer;background:#fff;color:#888">
+            Hoy
+          </button>
+        </span>
+      </h3>
       <div id="descripcion-pagos"></div>
     </div>
   </div>
@@ -565,14 +576,42 @@ function actualizarSelectPersonas(){
   });
 }
 
+function hoyISO(){
+  const h = new Date();
+  return h.getFullYear()+'-'+String(h.getMonth()+1).padStart(2,'0')+'-'+String(h.getDate()).padStart(2,'0');
+}
+
+function resetVistFecha(){
+  const el = document.getElementById("vista-fecha");
+  if (el){ el.value = hoyISO(); render(); }
+}
+
+// Devuelve solo los pagos del día mostrado en la vista Resumen
+function pagosDia(){
+  const el = document.getElementById("vista-fecha");
+  const fechaSel = el ? el.value : hoyISO();
+  return window.pagos.filter(p => {
+    if (!p.ts) return false;
+    const d = new Date(p.ts);
+    const iso = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    return iso === fechaSel;
+  });
+}
+
 function render(){
   if (!window.rolActivo) return;
 
-  // Lista equipo
+  // Asegura que el input de fecha tenga valor (hoy por defecto)
+  const vistaFecha = document.getElementById("vista-fecha");
+  if (vistaFecha && !vistaFecha.value) vistaFecha.value = hoyISO();
+
+  const pagosHoy = pagosDia();
+
+  // Lista equipo — conteo solo del día visible
   const lista = document.getElementById("lista");
   if (lista) lista.innerHTML = window.equipo.length
     ? window.equipo.map(p => {
-        const total = window.pagos.filter(x=>x.persona===p.nombre).length;
+        const total = pagosHoy.filter(x=>x.persona===p.nombre).length;
         return `<div class="member-row" onclick="verDetalle('${p.nombre}')">
           <span>${p.nombre} <small style="color:#aaa">(${p.rol})</small></span>
           <span style="font-weight:700">${total} ops</span>
@@ -580,23 +619,18 @@ function render(){
       }).join("")
     : "<p style='color:#999;padding:10px'>Sin colaboradores configurados.</p>";
 
-  // Pagos
+  // Pagos — solo del día visible, con hora:minuto
   const dpagos = document.getElementById("descripcion-pagos");
-  if (dpagos) dpagos.innerHTML = window.pagos.length
-    ? [...window.pagos].sort((a,b)=>(b.ts||0)-(a.ts||0)).map(p => {
+  if (dpagos) dpagos.innerHTML = pagosHoy.length
+    ? [...pagosHoy].sort((a,b)=>(b.ts||0)-(a.ts||0)).map(p => {
         const cls = p.estado==="Completado"?"ok":p.estado==="Revisión"?"warn":"bad";
-        const horaMin = p.ts
-          ? new Date(p.ts).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'})
-          : (p.hora!==undefined ? p.hora+":00" : "—");
-        const fecha = p.ts
-          ? new Date(p.ts).toLocaleDateString('es-CO')
-          : (p.fecha||"");
+        const horaMin = new Date(p.ts).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
         return `<div class="member-row" onclick="verDetalleRegistro('${p._id}')">
-          <span>${p.persona} <small style="color:#aaa">${fecha} ${horaMin}</small></span>
+          <span>${p.persona} <small style="color:#aaa">${horaMin}</small></span>
           <span class="badge ${cls}">${p.estado}</span>
         </div>`;
       }).join("")
-    : "<p style='color:#999;padding:10px'>Sin pagos registrados aún.</p>";
+    : "<p style='color:#999;padding:10px'>Sin pagos registrados para esta fecha.</p>";
 
   // Admin lista
   const adminLista = document.getElementById("admin-lista");
@@ -615,7 +649,7 @@ function render(){
 function renderGrafico(){
   const canvas = document.getElementById("grafico"); if (!canvas) return;
   const horas  = Array(24).fill(0);
-  window.pagos.forEach(p => { if (p.hora!==undefined) horas[p.hora]++; });
+  pagosDia().forEach(p => { if (p.hora!==undefined) horas[p.hora]++; });
   if (chart) chart.destroy();
   chart = new Chart(canvas, {
     type: "bar",
