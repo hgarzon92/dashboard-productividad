@@ -198,7 +198,9 @@ body{font-family:Arial;background:#f6f8fb;min-height:100vh}
     </div>
     <div class="card">
       <h3>📊 Operaciones por hora</h3>
-      <canvas id="grafico"></canvas>
+      <div style="height:130px;position:relative">
+        <canvas id="grafico"></canvas>
+      </div>
     </div>
     <div class="card">
       <h3>👥 Equipo</h3>
@@ -653,8 +655,23 @@ function renderGrafico(){
   if (chart) chart.destroy();
   chart = new Chart(canvas, {
     type: "bar",
-    data: { labels: horas.map((_,i)=>i+":00"), datasets:[{data:horas,backgroundColor:"#1D9E75",borderRadius:4}] },
-    options: { plugins:{legend:{display:false}}, scales:{x:{ticks:{maxTicksLimit:12}}} }
+    data: {
+      labels: horas.map((_,i) => i+":00"),
+      datasets:[{
+        data: horas,
+        backgroundColor: "#0033A0",
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ ticks:{ maxTicksLimit:12, font:{ size:10 } } },
+        y:{ ticks:{ font:{ size:10 } }, beginAtZero:true }
+      }
+    }
   });
 }
 
